@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Infantino's World Cup Tour</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    body { margin: 0; background: #020617; font-family: ui-sans-serif, system-ui, sans-serif; }
+  </style>
+</head>
+<body>
+  <div id="root">
+    <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-family:ui-sans-serif,system-ui,sans-serif;">
+      <div style="text-align:center;">
+        <div style="font-size:14px;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px;">Loading map</div>
+        <div style="font-size:12px;color:#475569;">First load takes 3–5 seconds</div>
+      </div>
+    </div>
+  </div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    const Play = ({ size = 24 }) => (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <polygon points="6 3 20 12 6 21 6 3" />
+      </svg>
+    );
+
+    const Pause = ({ size = 24 }) => (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="14" y="4" width="4" height="16" rx="1" />
+        <rect x="6" y="4" width="4" height="16" rx="1" />
+      </svg>
+    );
+
+    const RotateCcw = ({ size = 24 }) => (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+        <path d="M3 3v5h5" />
+      </svg>
+    );
+
+    const Plane = ({ size = 24, color = "currentColor", fill = "none" }) => (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill={fill} stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z" />
+      </svg>
+    );
+
+    const InfantinoFlightMap = () => {
+      const [currentLeg, setCurrentLeg] = useState(0);
+      const [progress, setProgress] = useState(0);
+      const [isPlaying, setIsPlaying] = useState(true);
+      const [speed, setSpeed] = useState(1);
+      const rafRef = useRef();
+      const lastTimeRef = useRef();
+
+      const flights = [
+        { from: 'Mexico City', to: 'Guadalajara', miles: 295, date: 'Jun 11', match: 'South Korea vs Czechia' },
+        { from: 'Guadalajara', to: 'Los Angeles', miles: 329, date: 'Jun 12', match: 'USA vs Paraguay' },
+        { from: 'Los Angeles', to: 'San Francisco', miles: 313, date: 'Jun 13', match: 'Qatar vs Switzerland' },
+        { from: 'San Francisco', to: 'Vancouver', miles: 822, date: 'Jun 13', match: 'Australia vs Türkiye' },
+        { from: 'Vancouver', to: 'Miami', miles: 2805, date: 'Jun 14', match: 'FIFA Exec Summit' },
+        { from: 'Miami', to: 'Seattle', miles: 2733, date: 'Jun 15', match: 'Belgium vs Egypt' },
+        { from: 'Seattle', to: 'Los Angeles', miles: 961, date: 'Jun 15', match: 'Iran vs New Zealand' },
+        { from: 'Los Angeles', to: 'Kansas City', miles: 1366, date: 'Jun 16', match: 'Argentina vs Algeria' },
+        { from: 'Kansas City', to: 'Houston', miles: 646, date: 'Jun 17', match: 'Portugal vs Congo DR' },
+        { from: 'Houston', to: 'Mexico City', miles: 757, date: 'Jun 18', match: 'Uzbekistan vs Colombia' },
+        { from: 'Mexico City', to: 'Vancouver', miles: 2458, date: 'Jun 18', match: 'Canada vs Qatar' },
+        { from: 'Vancouver', to: 'Boston', miles: 2505, date: 'Jun 20', match: 'Scotland vs Morocco' },
+        { from: 'Boston', to: 'Philadelphia', miles: 272, date: 'Jun 20', match: 'Brazil vs Haiti' },
+        { from: 'Philadelphia', to: 'Houston', miles: 1340, date: 'Jun 20', match: 'Netherlands vs Sweden' },
+        { from: 'Houston', to: 'Monterrey', miles: 477, date: 'Jun 21', match: 'Japan vs Tunisia (1,000th WC match)' },
+        { from: 'Monterrey', to: 'Atlanta', miles: 1242, date: 'Jun 21', match: 'Spain vs Saudi Arabia' },
+        { from: 'Atlanta', to: 'Miami', miles: 594, date: 'Jun 21', match: 'Uruguay vs Cape Verde' },
+        { from: 'Miami', to: 'Philadelphia', miles: 1013, date: 'Jun 22', match: 'France vs Iraq' },
+        { from: 'Philadelphia', to: 'Toronto', miles: 354, date: 'Jun 24', match: 'Croatia vs Panama (Modrić 200)' },
+        { from: 'Toronto', to: 'Miami', miles: 1236, date: 'Jun 25', match: 'Brazil vs Scotland' },
+        { from: 'Miami', to: 'Atlanta', miles: 594, date: 'Jul 1', match: 'England vs Congo DR (Kane)' },
+        { from: 'Atlanta', to: 'San Francisco', miles: 2140, date: 'Jul 1', match: 'USA vs Bosnia-Herzegovina' },
+      ];
+
+      const cities = {
+        'Mexico City': { lat: 19.30, lon: -99.15 },
+        'Guadalajara': { lat: 20.68, lon: -103.46 },
+        'Los Angeles': { lat: 33.95, lon: -118.34 },
+        'San Francisco': { lat: 37.40, lon: -121.97 },
+        'Vancouver': { lat: 49.28, lon: -123.11 },
+        'Miami': { lat: 25.77, lon: -80.19 },
+        'Seattle': { lat: 47.60, lon: -122.33 },
+        'Kansas City': { lat: 39.05, lon: -94.48 },
+        'Houston': { lat: 29.68, lon: -95.41 },
+        'Boston': { lat: 42.37, lon: -71.03 },
+        'Philadelphia': { lat: 39.90, lon: -75.17 },
+        'Monterrey': { lat: 25.67, lon: -100.31 },
+        'Atlanta': { lat: 33.75, lon: -84.40 },
+        'Toronto': { lat: 43.65, lon: -79.38 },
+      };
+
+      const W = 900, H = 620;
+      const project = ({ lat, lon }) => ({
+        x: ((lon + 130) / 62) * W,
+        y: ((58 - lat) / 45) * H,
+      });
+
+      const borders = {
+        usa: [
+          [49.0,-123.0],[48.4,-124.7],[46.0,-124.1],[42.0,-124.4],[39.0,-123.7],
+          [37.0,-122.4],[35.5,-121.0],[34.0,-119.2],[33.5,-118.5],[32.5,-117.1],
+          [32.7,-114.7],[31.3,-110.9],[31.3,-108.2],[31.8,-106.5],[29.8,-104.7],
+          [29.1,-101.4],[26.2,-98.5],[25.9,-97.3],
+          [27.5,-97.2],[29.4,-94.7],[29.9,-93.9],[29.2,-89.3],[30.4,-87.5],
+          [29.7,-84.8],[28.1,-82.8],[25.2,-81.0],[25.7,-80.1],[27.0,-80.2],
+          [28.5,-80.5],[30.5,-81.5],[32.0,-80.9],[33.9,-78.0],[35.0,-75.6],
+          [37.0,-76.0],[38.5,-75.1],[40.0,-74.0],[41.3,-71.2],[42.0,-70.0],
+          [44.0,-68.5],[45.2,-67.0],
+          [45.3,-70.9],[45.0,-74.4],[44.0,-76.4],[43.4,-79.4],[42.3,-82.4],
+          [46.0,-84.5],[46.9,-89.2],[48.0,-89.5],[48.4,-92.9],[49.0,-95.2],
+          [49.0,-110.0],[49.0,-123.0],
+        ],
+        canada: [
+          [49.0,-123.0],[50.0,-125.5],[54.4,-130.6],[56.0,-133.0],[59.0,-137.0],
+          [60.0,-140.0],[69.0,-140.0],[70.0,-128.0],[69.0,-105.0],[67.0,-95.0],
+          [64.0,-87.0],[60.0,-85.0],[59.0,-94.0],[55.0,-88.0],[51.5,-80.5],
+          [55.0,-82.0],[58.0,-78.0],[62.0,-73.0],[60.0,-64.5],[55.0,-60.0],
+          [51.0,-55.5],[47.5,-52.5],[45.5,-60.0],[45.2,-67.0],[45.3,-70.9],
+          [45.0,-74.4],[44.0,-76.4],[43.4,-79.4],[42.3,-82.4],[46.0,-84.5],
+          [46.9,-89.2],[48.0,-89.5],[48.4,-92.9],[49.0,-95.2],[49.0,-110.0],
+          [49.0,-123.0],
+        ],
+        mexico: [
+          [32.5,-117.1],[30.0,-115.7],[28.0,-114.0],[25.0,-112.2],[23.0,-110.0],
+          [22.9,-109.4],[24.5,-110.5],[26.5,-109.4],[27.5,-110.9],[28.8,-111.4],
+          [26.0,-109.0],[22.9,-105.6],[20.6,-105.3],[17.5,-101.6],[16.7,-99.9],
+          [15.7,-96.5],[15.7,-93.8],[14.6,-92.2],[16.1,-92.0],[17.3,-91.3],
+          [17.8,-89.2],[18.5,-88.3],[18.5,-87.7],[20.5,-87.0],[21.6,-87.0],
+          [21.6,-88.5],[20.9,-90.4],[19.8,-92.5],[18.5,-94.4],[19.2,-96.1],
+          [22.2,-97.8],[25.9,-97.3],[26.2,-98.5],[29.1,-101.4],[29.8,-104.7],
+          [31.8,-106.5],[31.3,-108.2],[31.3,-110.9],[32.7,-114.7],[32.5,-117.1],
+        ],
+      };
+
+      const bordersPath = (coords) => {
+        return coords
+          .map(([lat, lon], i) => {
+            const p = project({ lat, lon });
+            return `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`;
+          })
+          .join(' ') + ' Z';
+      };
+
+      const cumulativeAt = (legIdx, prog) => {
+        let total = 0;
+        for (let i = 0; i < legIdx; i++) total += flights[i].miles;
+        if (legIdx < flights.length) total += flights[legIdx].miles * prog;
+        return Math.round(total);
+      };
+
+      useEffect(() => {
+        if (!isPlaying) {
+          cancelAnimationFrame(rafRef.current);
+          lastTimeRef.current = null;
+          return;
+        }
+        const tick = (t) => {
+          if (lastTimeRef.current == null) lastTimeRef.current = t;
+          const dt = (t - lastTimeRef.current) / 1000;
+          lastTimeRef.current = t;
+          setProgress((p) => {
+            const next = p + dt * 0.4 * speed;
+            if (next >= 1) {
+              setCurrentLeg((leg) => {
+                if (leg + 1 >= flights.length) {
+                  setIsPlaying(false);
+                  return leg;
+                }
+                return leg + 1;
+              });
+              return 0;
+            }
+            return next;
+          });
+          rafRef.current = requestAnimationFrame(tick);
+        };
+        rafRef.current = requestAnimationFrame(tick);
+        return () => cancelAnimationFrame(rafRef.current);
+      }, [isPlaying, speed, flights.length]);
+
+      const restart = () => {
+        setCurrentLeg(0);
+        setProgress(0);
+        setIsPlaying(true);
+      };
+
+      const arcPath = (a, b, bow = 0.25) => {
+        const mx = (a.x + b.x) / 2;
+        const my = (a.y + b.y) / 2;
+        const dx = b.x - a.x;
+        const dy = b.y - a.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        const nx = -dy / dist;
+        const ny = dx / dist;
+        const sign = ny < 0 ? 1 : -1;
+        const cx = mx + nx * dist * bow * sign;
+        const cy = my + ny * dist * bow * sign;
+        return { d: `M ${a.x} ${a.y} Q ${cx} ${cy} ${b.x} ${b.y}`, cx, cy };
+      };
+
+      const bezierPoint = (a, ctrl, b, t) => {
+        const x = (1 - t) * (1 - t) * a.x + 2 * (1 - t) * t * ctrl.x + t * t * b.x;
+        const y = (1 - t) * (1 - t) * a.y + 2 * (1 - t) * t * ctrl.y + t * t * b.y;
+        const tx = 2 * (1 - t) * (ctrl.x - a.x) + 2 * t * (b.x - ctrl.x);
+        const ty = 2 * (1 - t) * (ctrl.y - a.y) + 2 * t * (b.y - ctrl.y);
+        const angle = Math.atan2(ty, tx) * 180 / Math.PI;
+        return { x, y, angle };
+      };
+
+      const current = flights[currentLeg];
+      const fromPt = project(cities[current.from]);
+      const toPt = project(cities[current.to]);
+      const currentArc = arcPath(fromPt, toPt);
+      const planePos = bezierPoint(fromPt, { x: currentArc.cx, y: currentArc.cy }, toPt, progress);
+
+      const totalMiles = flights.reduce((s, f) => s + f.miles, 0);
+      const traveled = cumulativeAt(currentLeg, progress);
+
+      const latLines = [20, 30, 40, 50];
+      const lonLines = [-120, -110, -100, -90, -80];
+
+      return (
+        <div className="w-full min-h-screen bg-slate-950 text-slate-100 p-6">
+          <div className="max-w-6xl mx-auto">
+            <div className="mb-4">
+              <h1 className="text-3xl font-bold mb-1">Infantino's World Cup Tour</h1>
+              <p className="text-slate-400 text-sm">
+                FIFA president's flights, June 11 – July 1, 2026 · Source:{' '}
+                <a
+                  href="https://www.espn.com/soccer/story/_/id/49116383/infantino-fifa-presidents-epic-world-cup-tour"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-amber-400 hover:text-amber-300 underline decoration-dotted underline-offset-4"
+                >
+                  ESPN
+                </a>
+              </p>
+            </div>
+
+            <div className="grid grid-cols-4 gap-3 mb-4">
+              <div className="bg-slate-900 rounded-lg p-3 border border-slate-800">
+                <div className="text-xs text-slate-500 uppercase tracking-wider">Leg</div>
+                <div className="text-2xl font-bold text-amber-400">{currentLeg + 1}<span className="text-slate-600 text-lg"> / {flights.length}</span></div>
+              </div>
+              <div className="bg-slate-900 rounded-lg p-3 border border-slate-800">
+                <div className="text-xs text-slate-500 uppercase tracking-wider">Date</div>
+                <div className="text-2xl font-bold">{current.date}</div>
+              </div>
+              <div className="bg-slate-900 rounded-lg p-3 border border-slate-800">
+                <div className="text-xs text-slate-500 uppercase tracking-wider">Miles traveled</div>
+                <div className="text-2xl font-bold text-emerald-400">{traveled.toLocaleString()}</div>
+              </div>
+              <div className="bg-slate-900 rounded-lg p-3 border border-slate-800">
+                <div className="text-xs text-slate-500 uppercase tracking-wider">Total miles</div>
+                <div className="text-2xl font-bold">{totalMiles.toLocaleString()}</div>
+              </div>
+            </div>
+
+            <div className="bg-slate-900 rounded-lg p-3 mb-4 border border-slate-800">
+              <div className="flex items-center gap-3 flex-wrap">
+                <span className="text-lg font-semibold">{current.from}</span>
+                <span style={{color: '#fbbf24'}}><Plane size={20} /></span>
+                <span className="text-lg font-semibold">{current.to}</span>
+                <span className="text-slate-500">·</span>
+                <span className="text-slate-400">{current.miles.toLocaleString()} mi</span>
+                <span className="text-slate-500">·</span>
+                <span className="text-slate-300">{current.match}</span>
+              </div>
+            </div>
+
+            <div className="bg-slate-900 rounded-lg border border-slate-800 overflow-hidden">
+              <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto">
+                <defs>
+                  <linearGradient id="oceanGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#0f172a" />
+                    <stop offset="100%" stopColor="#020617" />
+                  </linearGradient>
+                  <radialGradient id="cityGlow">
+                    <stop offset="0%" stopColor="#fbbf24" stopOpacity="0.6" />
+                    <stop offset="100%" stopColor="#fbbf24" stopOpacity="0" />
+                  </radialGradient>
+                  <filter id="glow">
+                    <feGaussianBlur stdDeviation="2" result="b" />
+                    <feMerge>
+                      <feMergeNode in="b" />
+                      <feMergeNode in="SourceGraphic" />
+                    </feMerge>
+                  </filter>
+                </defs>
+
+                <rect width={W} height={H} fill="url(#oceanGrad)" />
+
+                {latLines.map((lat) => {
+                  const y = project({ lat, lon: -100 }).y;
+                  return (
+                    <g key={`lat-${lat}`}>
+                      <line x1={0} y1={y} x2={W} y2={y} stroke="#1e293b" strokeWidth="1" strokeDasharray="2 6" />
+                      <text x={8} y={y - 4} fill="#334155" fontSize="10" fontFamily="monospace">{lat}°N</text>
+                    </g>
+                  );
+                })}
+                {lonLines.map((lon) => {
+                  const x = project({ lat: 40, lon }).x;
+                  return (
+                    <g key={`lon-${lon}`}>
+                      <line x1={x} y1={0} x2={x} y2={H} stroke="#1e293b" strokeWidth="1" strokeDasharray="2 6" />
+                      <text x={x + 4} y={H - 8} fill="#334155" fontSize="10" fontFamily="monospace">{Math.abs(lon)}°W</text>
+                    </g>
+                  );
+                })}
+
+                <g>
+                  <path d={bordersPath(borders.canada)} fill="#0b1220" stroke="#334155" strokeWidth="1" strokeLinejoin="round" />
+                  <path d={bordersPath(borders.usa)} fill="#0f172a" stroke="#334155" strokeWidth="1" strokeLinejoin="round" />
+                  <path d={bordersPath(borders.mexico)} fill="#0b1220" stroke="#334155" strokeWidth="1" strokeLinejoin="round" />
+                </g>
+
+                {flights.slice(0, currentLeg).map((f, i) => {
+                  const a = project(cities[f.from]);
+                  const b = project(cities[f.to]);
+                  const arc = arcPath(a, b);
+                  return (
+                    <path
+                      key={`done-${i}`}
+                      d={arc.d}
+                      fill="none"
+                      stroke="#f59e0b"
+                      strokeWidth="1.5"
+                      strokeOpacity="0.35"
+                      strokeDasharray="4 3"
+                    />
+                  );
+                })}
+
+                <path d={currentArc.d} fill="none" stroke="#1e293b" strokeWidth="2" />
+                <path
+                  d={currentArc.d}
+                  fill="none"
+                  stroke="#fbbf24"
+                  strokeWidth="2.5"
+                  strokeDasharray={`${progress * 2000} 2000`}
+                  filter="url(#glow)"
+                />
+
+                {Object.entries(cities).map(([name, coord]) => {
+                  const p = project(coord);
+                  const visited = flights.slice(0, currentLeg + 1).some((f, i) => f.from === name || (f.to === name && (i < currentLeg || progress > 0.98)));
+                  return (
+                    <g key={name}>
+                      {visited && <circle cx={p.x} cy={p.y} r="14" fill="url(#cityGlow)" />}
+                      <circle
+                        cx={p.x}
+                        cy={p.y}
+                        r={visited ? 5 : 3.5}
+                        fill={visited ? '#fbbf24' : '#475569'}
+                        stroke={visited ? '#fef3c7' : '#64748b'}
+                        strokeWidth="1"
+                      />
+                      <text
+                        x={p.x + 8}
+                        y={p.y + 4}
+                        fill={visited ? '#fef3c7' : '#94a3b8'}
+                        fontSize="12"
+                        fontFamily="ui-sans-serif, system-ui"
+                        fontWeight={visited ? '600' : '400'}
+                      >
+                        {name}
+                      </text>
+                    </g>
+                  );
+                })}
+
+                <g transform={`translate(${planePos.x}, ${planePos.y}) rotate(${planePos.angle})`}>
+                  <circle r="14" fill="#fbbf24" opacity="0.15" />
+                  <g transform="translate(-9, -9)">
+                    <Plane color="#fef3c7" size={18} fill="#fbbf24" strokeWidth={1.5} />
+                  </g>
+                </g>
+              </svg>
+            </div>
+
+            <div className="mt-4 bg-slate-900 rounded-lg p-3 border border-slate-800">
+              <div className="flex gap-1 mb-3">
+                {flights.map((f, i) => (
+                  <div
+                    key={i}
+                    className={`flex-1 h-2 rounded-full transition-colors ${
+                      i < currentLeg ? 'bg-amber-500' : i === currentLeg ? 'bg-slate-700' : 'bg-slate-800'
+                    }`}
+                  >
+                    {i === currentLeg && (
+                      <div
+                        className="h-full bg-amber-400 rounded-full transition-none"
+                        style={{ width: `${progress * 100}%` }}
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex items-center gap-3 flex-wrap">
+                <button
+                  onClick={() => setIsPlaying(!isPlaying)}
+                  className="flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-md font-semibold transition-colors"
+                  style={{color: '#1f2937'}}
+                >
+                  {isPlaying ? <Pause size={16} /> : <Play size={16} />}
+                  {isPlaying ? 'Pause' : 'Play'}
+                </button>
+                <button
+                  onClick={restart}
+                  className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-100 rounded-md transition-colors"
+                >
+                  <RotateCcw size={16} />
+                  Restart
+                </button>
+                <div className="flex items-center gap-2 ml-2">
+                  <span className="text-sm text-slate-400">Speed:</span>
+                  {[0.5, 1, 2, 4].map((s) => (
+                    <button
+                      key={s}
+                      onClick={() => setSpeed(s)}
+                      className={`px-3 py-1 text-sm rounded ${
+                        speed === s ? 'bg-slate-700 text-amber-400' : 'bg-slate-800 text-slate-400 hover:text-slate-200'
+                      }`}
+                    >
+                      {s}×
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <p className="mt-4 text-xs text-slate-500">
+              First 11 legs (Jun 11–18) from ESPN's leg-by-leg tour piece. Remaining legs reconstructed from ESPN follow-up coverage, rg.org and Sporting Intelligence. Tour ends at the USA vs Bosnia game. Distances are as-the-crow-flies between stadiums; continent outlines are stylized.
+            </p>
+          </div>
+        </div>
+      );
+    };
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<InfantinoFlightMap />);
+  </script>
+</body>
+</html>
