@@ -4,6 +4,8 @@ An interactive animated map visualizing FIFA President Gianni Infantino's travel
 
 **Live demo:** [Infantino's World Cup Tour](https://infanito-flight-map.netlify.app/)
 
+![Infantino's World Cup Tour flight map in progress](screenshot.png)
+
 ## What it shows
 
 - 22 flight legs across North America
