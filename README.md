@@ -2,7 +2,9 @@
 
 An interactive animated map visualizing FIFA President Gianni Infantino's travel during the 2026 World Cup (June 11 – July 1, 2026), built from a single text-only ESPN article.
 
-**Live demo:** [add your Netlify link here]
+**Live demo:** [Infantino's World Cup Tour](https://infanito-flight-map.netlify.app/)
+
+![Infantino's World Cup Tour flight map in progress](screenshot.png)
 
 ## What it shows
 
